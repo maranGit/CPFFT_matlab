@@ -106,5 +106,3 @@ for step = 1:nstep
     history = history1;
     
 end
-
-

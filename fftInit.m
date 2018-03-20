@@ -1,9 +1,7 @@
 function [mateprop,history,history1] = fftInit(N)
-
-% phase indicator: cubical inclusion of volume fraction (9^3) / (31^3)
-% phase = zeros(31, 31, 31);
-% phase(23:31, 1:9, 23:31) = 1; % hard phase
-% phase = reshape( phase, [], 1 );
+% Ran Ma
+% 03/19/2018
+% initialize material parameters for mm01
 
 N3 = N*N*N;
 temp = round(N/2);
@@ -12,7 +10,7 @@ phase(N-temp:N, 1:temp, N-temp:N) = 1; % hard phase
 phase = reshape( phase, [], 1 );
 
 % hard code material parameters
-temp = [1;1;1;12000;0.3;0.5;9000;100];
+temp = [1;1;1;12000;0.3;0.5;1000;100];
 mateprop = repmat(temp,1,N3);
 
 % hard phase

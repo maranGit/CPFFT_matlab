@@ -1,9 +1,8 @@
 function [P, A, history1] = fftUpdate(Fn1, Fn, history, history1, mateprop)
-%% ----------------PROBLEM DEFINITION / CONSTITUTIVE MODEL-----------------
-% function [P_all, K4_all, htn1] = constitutive(F_all, htn, urcsn, urcsn1) % verified against python
 % Ran Ma
-% 3/13/2018
-% recover stress and stiffness for FFT
+% 03/19/2018
+% call material subroutine
+% then pull back stress and stiffness to reference configuration
 %
 zero = 0;
 beta = mateprop(6);
@@ -38,7 +37,7 @@ uddt_voigt(4:6) = uddt_voigt(4:6) * 2;
 
 % update stress and stiffness
 currhist = history(1:11);
-cgn = history1(12:20);
+cgn = history(12:20);
 
 [cgn1,currhist1,rtse,yield] = ...
     mm01(ym_n1,nu_n1,beta,hprime_n1,yld_n1,cgn,uddt_voigt,currhist,ym_n,nu_n);
@@ -46,12 +45,12 @@ cgn = history1(12:20);
 history1(12:20) = cgn1;
 history1(1:11) = currhist1;
 
-% sigma to P (P = J*sigma*F^{-T})
+%% sigma to P (P = J*sigma*F^{-T})
 urcs = [cgn1(1),cgn1(4),cgn1(6);cgn1(4),cgn1(2),cgn1(5);cgn1(6),cgn1(5),cgn1(3)];
 sigma = rn1 * urcs * transpose(rn1);
 P = sigma*transpose(fn1inv)*detF;
 
-% dsigma/dD to dP/dF (Eqn. 7.1.90 in Simo & Hughes)
+%% dsigma/dD to dP/dF (Eqn. 7.1.90 in Simo & Hughes)
 i2v = [1,4,6; 4,2,5; 6,5,3];
 i2f = [1,2,3; 4,5,6; 7,8,9];
 
@@ -61,9 +60,10 @@ sigma1 = qn1*cgn1(1:6);
 sigma2 = [sigma1; 0; 0; 0];
 cep = ctran1(cep,qn1,sigma2,1,detF,1);
 
-A = zeros(9,9);
-cptau = zeros(9,9);
+A = zeros(9,9); % dP / dF
+cptau = zeros(9,9); % c_abcd + tau_ac * delta_bd
 
+% compute c_abcd + tau_ac * delta_bd
 for a=1:3
     for b=1:3
         for c=1:3
@@ -84,6 +84,7 @@ for a=1:3
     end
 end
 
+% compute A_aBcD = fn1inv_Bb * cptau_abcd * fn1inv_Dd
 for a=1:3
     for B=1:3
         for c=1:3
