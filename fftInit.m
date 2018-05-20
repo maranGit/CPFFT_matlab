@@ -15,7 +15,11 @@ mateprop = repmat(temp,1,N3);
 
 % hard phase
 temp2 = find(phase);
-mateprop(8,temp2) = mateprop(8,temp2) * 2;
+mateprop(4,temp2) = 24000.0;
+mateprop(5,temp2) = 0.3;
+mateprop(6,temp2) = 0.5;
+mateprop(7,temp2) = 1000.0;
+mateprop(8,temp2) = 200.0;
 
 zero = 0;
 PatchE = mateprop(4,:);
