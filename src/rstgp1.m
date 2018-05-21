@@ -1,4 +1,4 @@
-function [P, A, history1] = fftUpdate(Fn1, Fn, history, history1, mateprop)
+function [P, A, history1] = rstgp1(Fn1, Fn, history, history1, mateprop)
 % Ran Ma
 % 03/19/2018
 % call material subroutine

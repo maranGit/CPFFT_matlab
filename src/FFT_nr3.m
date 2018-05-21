@@ -10,7 +10,7 @@ F_old = F;
 
 % initial internal variables and stiffness matrix
 [mateprop,history,history1] = fftInit(N, matList, matprp);
-[~, K4, ~] = constitutive(F, F_old, history, history1, mateprop);
+[~, K4, ~] = drive_sig_up(F, F_old, history, history1, mateprop);
 [mateprop,history,history1] = fftInit(N, matList, matprp);
 
 % set macroscopic loading
@@ -43,7 +43,7 @@ for step = 1:nstep
         fprintf('>>> Now starting iteration %i \n', iiter)
         dFm = pcg( G_K_dF, b, 1.0e-10, N3 ); % solve linear system using CG
         F = F + reshape( dFm, N3, ndim2 ); % update DOFs
-        [P, K4, history1] = constitutive(F, F_old, history, history1, mateprop); % new residual stress and tangent
+        [P, K4, history1] = drive_sig_up(F, F_old, history, history1, mateprop); % new residual stress and tangent
         b = - G_dP( P ); % convert residual stress to residual
         G_K_dF = @(dFm) G(dFm, Ghat4, N, ndim, K4); % update K4 in anonymous function
         res = sqrt( transpose(dFm) * dFm );

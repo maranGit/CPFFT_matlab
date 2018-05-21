@@ -1,4 +1,4 @@
-function [P_all, K4_all, history1] = constitutive(F_all, F_old, history, history1, mateprop_all)
+function [P_all, K4_all, history1] = drive_sig_up(F_all, F_old, history, history1, mateprop_all)
 % Ran Ma
 % 03/19/2018
 % take P and A from lower level function
@@ -23,19 +23,19 @@ for temp = 1 : N3 % loop over all integration point
     switch stiff_flag
         case 0
             % analytical tangent stiffness
-            [P, A, currhist1] = fftUpdate(Fn1, Fn, currhist, currhist1, mateprop);
+            [P, A, currhist1] = rstgp1(Fn1, Fn, currhist, currhist1, mateprop);
             history1(:,temp) = currhist1;
         case 1
             % tangent stiffness from finite difference method
             A = zeros(9,9);
             tol = 1.0e-8;
             temp1 = 1;
-            [P, ~, historyBackup] = fftUpdate(Fn1, Fn, currhist, currhist1, mateprop);
+            [P, ~, historyBackup] = rstgp1(Fn1, Fn, currhist, currhist1, mateprop);
             for a = 1:3
                 for b = 1:3
                     Fn1_inc = Fn1;
                     Fn1_inc(a,b) = Fn1(a,b) + tol;
-                    [P1, ~, ~] = fftUpdate(Fn1_inc, Fn, currhist, currhist1, mateprop);
+                    [P1, ~, ~] = rstgp1(Fn1_inc, Fn, currhist, currhist1, mateprop);
                     A(:,temp1) = reshape(transpose(P1-P)/tol,9,1);
                     temp1 = temp1 + 1;
                 end
@@ -48,19 +48,19 @@ for temp = 1 : N3 % loop over all integration point
             A = zeros(9,9);
             tol = 1.0e-8;
             temp1 = 1;
-            [P, ~, historyBackup] = fftUpdate(Fn1, Fn, currhist, currhist1, mateprop);
+            [P, ~, historyBackup] = rstgp1(Fn1, Fn, currhist, currhist1, mateprop);
             for a = 1:3
                 for b = 1:3
                     Fn1_inc = Fn1;
                     Fn1_inc(a,b) = Fn1(a,b) + tol;
-                    [P1, ~, ~] = fftUpdate(Fn1_inc, Fn, currhist, currhist1, mateprop);
+                    [P1, ~, ~] = rstgp1(Fn1_inc, Fn, currhist, currhist1, mateprop);
                     A(:,temp1) = reshape(transpose(P1-P)/tol,9,1);
                     temp1 = temp1 + 1;
                 end
             end
             
             % (2) analytical
-            [~, A2, ~] = fftUpdate(Fn1, Fn, currhist, currhist1, mateprop);
+            [~, A2, ~] = rstgp1(Fn1, Fn, currhist, currhist1, mateprop);
             
             % (3) compare difference
 %             A_diff = ( abs(A - A2) ./ ( abs(A) + abs(A2) ) );
