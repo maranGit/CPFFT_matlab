@@ -8,7 +8,7 @@ N3 = N ^ 3;
 
 Ghat4 = formG(ndim,N,N3);
 
-inelbk
+[nelblk, elblks] = inelbk( matList, N3 );
 
 urcs_blk_list = zeros(nelblk,1);
 eps_blk_list = zeros(nelblk,1);

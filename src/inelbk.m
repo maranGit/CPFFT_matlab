@@ -13,7 +13,7 @@
 %     *                                                              *
 %     ****************************************************************
 %
-function inelbk( matList )
+function [nelblk, elblks] = inelbk( matList, noelem )
 %     implicit none
 %     include 'common.main'
 %
@@ -26,8 +26,10 @@ function inelbk( matList )
 %
 %     Ran: hard coded variables for autoblock
 %
+      param_def
       auto_size    = mxvl;  %  from param_def
-      display      = 1;
+      elblks = zeros(4,mxnmbl);
+%     display      = 1;
 %
 %                     first generation of automatic assignment of
 %                     elements to blocks.
@@ -45,8 +47,8 @@ function inelbk( matList )
       nelblk       = 1;   % in common main
       current_size = 1;
       felem        = 1;
-      elblks(1,1)  = 1;  % first element in block
-      elblks(0,1)  = 1;  % number elements in block
+      elblks(2,1)  = 1;  % first element in block
+      elblks(1,1)  = 1;  % number elements in block
       if( noelem == 1 ) 
           return;
       end
@@ -66,30 +68,30 @@ function inelbk( matList )
       for element = 2:noelem
          newblk       = 0;
          current_size = current_size + 1;
-         if( current_size .gt. auto_size )
+         if( current_size > auto_size )
              newblk = 1;
          end
          if( ~ newblk )
            ele_matmodel = matList( element );
-           compatible = ( blk_matmodel .eq. ele_matmodel );
+           compatible = ( blk_matmodel == ele_matmodel );
            if( ~ compatible ) 
                newblk = 1;
            end
          end
          if( ~ newblk )
-           elblks(0,nelblk)  = current_size;
-           cycle;
+           elblks(1,nelblk)  = current_size;
+           continue
          end
          nelblk = nelblk + 1;
-         if( nelblk .gt. mxnmbl )
-            param = nelblk;
+         if( nelblk > mxnmbl )
+%           param = nelblk;
 %      call errmsg(74,param,dums,dumr,dumd)
 %      call die_abort
             error('too many element blocks required');
          end
          felem             = element;
-         elblks(1,nelblk)  = felem;
-         elblks(0,nelblk)  = 1;
+         elblks(2,nelblk)  = felem;
+         elblks(1,nelblk)  = 1;
          current_size      = 1;
          blk_matmodel = matList( felem );
       end % on element
