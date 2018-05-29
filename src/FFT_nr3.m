@@ -10,7 +10,8 @@ F_old = F;
 
 % initial internal variables and stiffness matrix
 [mateprop,history,history1] = setup_mm01_rknstr(N, matList, matprp);
-[~, K4, ~] = drive_sig_up(F, F_old, history, history1, mateprop);
+% [~, K4, ~] = drive_sig_up(F, F_old, history, history1, mateprop);
+drive_sig_up
 [mateprop,history,history1] = setup_mm01_rknstr(N, matList, matprp);
 
 % set macroscopic loading
@@ -43,7 +44,10 @@ for step = 1:nstep
         fprintf('>>> Now starting iteration %i \n', iiter)
         dFm = pcg( G_K_dF, b, 1.0e-10, N3 ); % solve linear system using CG
         F = F + reshape( dFm, N3, ndim2 ); % update DOFs
-        [P, K4, history1] = drive_sig_up(F, F_old, history, history1, mateprop);
+        
+%         [P, K4, history1] = drive_sig_up(F, F_old, history, history1, mateprop);
+        drive_sig_up
+        
         b = - G_dP( P ); % convert residual stress to residual
         G_K_dF = @(dFm) G(dFm, Ghat4, N, ndim, K4); % update K4 in anonymous function
         res = sqrt( transpose(dFm) * dFm );

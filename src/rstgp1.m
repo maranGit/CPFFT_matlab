@@ -1,110 +1,114 @@
-function [P, A, history1] = rstgp1(Fn1, Fn, history, history1, mateprop)
-% Ran Ma
-% 03/19/2018
-% call material subroutine
-% then pull back stress and stiffness to reference configuration
+%     ****************************************************************
+%     *                                                              *
+%     *                      subroutine rstgp1                       *
+%     *                                                              *
+%     *                       written by : rhd                       *
+%     *                                                              *
+%     *                   last modified : 1/2/2016 rhd               *
+%     *                                                              *
+%     *     supervise the computation of strains, stresses and       *
+%     *     accompaning stress data at an integration point          *
+%     *     for a block of similar elements that use the same        *
+%     *     material model code                                      *
+%     *                                                              *
+%     *              ** geometric nonlinear version **               *
+%     *                                                              *
+%     ****************************************************************
 %
-zero = 0;
-beta = mateprop(6);
-PatchE = mateprop(4);
-Patchv = mateprop(5);
-tan_e = mateprop(7);
-yld_n1 = mateprop(8);
-ym_n1 = PatchE;
-ym_n = PatchE;
-nu_n1 = Patchv;
-nu_n = Patchv;
-hprime_n1 = tan_e*ym_n1/(ym_n1 - tan_e);
+%
+%      subroutine rstgp1( props, lprops, iprops, local_work )
+function rstgp1( local_work, uddt, cep_blk_n1 )
+%
+%        allocate and zero. only span rows are used but
+%        array operators (e.g uddt = ..) will operate on
+%        full content and access uninitialized values.
+%
+%     allocate( ddt(mxvl,nstr), uddt(mxvl,nstr),
+%    &          qnhalf(mxvl,nstr,nstr), qn1(mxvl,nstr,nstr) )
 
-% for ii = 1:N3
-
-% F to uddt
-%     currF = transpose(reshape(F(ii,:),3,3));
-%     oldF = transpose(reshape(F_old(ii,:),3,3));
-fnh = 0.5 * (Fn1 + Fn);
-dfn = Fn1 - Fn;
-fnhinv = inv(fnh);
-fn1inv = inv(Fn1);
-detF = det(Fn1);
-[rnh, ~] = poldec(fnh);
-[rn1, ~] = poldec(Fn1);
-
-ddt = dfn * fnhinv;
-ddt = 0.5 * (ddt + ddt');
-uddt = transpose(rnh) * ddt * rnh;
-uddt_voigt = transpose(uddt([1,5,9,4,8,7]));
-uddt_voigt(4:6) = uddt_voigt(4:6) * 2;
-
-% update stress and stiffness
-currhist = history(1:11);
-cgn = history(12:20);
-
-[cgn1,currhist1,rtse,yield] = ...
-    mm01(ym_n1,nu_n1,beta,hprime_n1,yld_n1,cgn,uddt_voigt,currhist,ym_n,nu_n);
-
-history1(12:20) = cgn1;
-history1(1:11) = currhist1;
-
-%% sigma to P (P = J*sigma*F^{-T})
-urcs = [cgn1(1),cgn1(4),cgn1(6);cgn1(4),cgn1(2),cgn1(5);cgn1(6),cgn1(5),cgn1(3)];
-sigma = rn1 * urcs * transpose(rn1);
-P = sigma*transpose(fn1inv)*detF;
-
-%% dsigma/dD to dP/dF (Eqn. 7.1.90 in Simo & Hughes)
-i2v = [1,4,6; 4,2,5; 6,5,3];
-i2f = [1,2,3; 4,5,6; 7,8,9];
-
-cep = cnst1(rtse,nu_n1,ym_n1,currhist1(2),currhist1(5),beta,currhist1(1),1,1,yield);
-qn1 = getrm1(rn1,2);
-sigma1 = qn1*cgn1(1:6);
-sigma2 = [sigma1; 0; 0; 0];
-cep = ctran1(cep,qn1,sigma2,1,detF,1);
-
-A = zeros(9,9); % dP / dF
-cptau = zeros(9,9); % c_abcd + tau_ac * delta_bd
-
-% compute c_abcd + tau_ac * delta_bd
-for a=1:3
-    for b=1:3
-        for c=1:3
-            for d=1:3
-                i1 = i2f(a,b);
-                i2 = i2f(c,d);
-                i3 = i2v(a,b);
-                i4 = i2v(c,d);
-                cptau(i1,i2) = cep(i3,i4);
-                if b == d
-                    cptau(i1,i2) = cptau(i1,i2) + sigma(a,c)*detF;
-                end
-%                 if a == c
-%                     cptau(i1,i2) = cptau(i1,i2) - sigma(b,d)*detF;
-%                 end
-            end
-        end
-    end
+drive_01_update( local_work, uddt, cep_blk_n1 );
 end
 
-% compute A_aBcD = fn1inv_Bb * cptau_abcd * fn1inv_Dd
-for a=1:3
-    for B=1:3
-        for c=1:3
-            for D=1:3
-                i1 = i2f(a,B);
-                i2 = i2f(c,D);
-                A(i1,i2) = fn1inv(B,1)*fn1inv(D,1)*cptau(i2f(a,1),i2f(c,1))...
-                         + fn1inv(B,1)*fn1inv(D,2)*cptau(i2f(a,1),i2f(c,2))...
-                         + fn1inv(B,1)*fn1inv(D,3)*cptau(i2f(a,1),i2f(c,3))...
-                         + fn1inv(B,2)*fn1inv(D,1)*cptau(i2f(a,2),i2f(c,1))...
-                         + fn1inv(B,2)*fn1inv(D,2)*cptau(i2f(a,2),i2f(c,2))...
-                         + fn1inv(B,2)*fn1inv(D,3)*cptau(i2f(a,2),i2f(c,3))...
-                         + fn1inv(B,3)*fn1inv(D,1)*cptau(i2f(a,3),i2f(c,1))...
-                         + fn1inv(B,3)*fn1inv(D,2)*cptau(i2f(a,3),i2f(c,2))...
-                         + fn1inv(B,3)*fn1inv(D,3)*cptau(i2f(a,3),i2f(c,3));
-            end
-        end
-    end
+function drive_01_update( local_work, uddt, cep_blk_n1 )
+%      use segmental_curves, only : max_seg_points
+%     use elem_block_data, only : gbl_cep_blocks => cep_blocks
+%      use main_data, only : extrapolated_du, non_zero_imposed_du
+%
+%     implicit none
+%     include 'param_def'
+%     integer, parameter :: max_seg_points=20
+%
+%                      parameter declarations
+%
+%      real ::    props(mxelpr,*)   ! all same but read only
+%      logical :: lprops(mxelpr,*)
+%      integer :: iprops(mxelpr,*)
+%     integer :: gpn, iout
+%     double precision ::  uddt_displ(mxvl,nstr)
+%     include 'include_sig_up'
+%
+%                       locally defined variables
+%
+%     integer :: span, felem, type, order, ngp, nnode, ndof, step,
+%    &           iter, now_blk, mat_type, number_points, curve_set,
+%    &           hist_size_for_blk, curve_type, elem_type, i
+%
+%     double precision ::
+%    &  dtime, gp_temps(mxvl), gp_rtemps(mxvl), gp_dtemps(mxvl),
+%    &  zero,  ddummy(1), gp_alpha, ymfgm, et, uddt_temps(mxvl,nstr),
+%    &  uddt(mxvl,nstr), cep(mxvl,6,6)
+%
+%     logical :: geonl, local_debug, temperatures, segmental,
+%    &           temperatures_ref, fgm_enode_props
+%
+%     data zero / 0.0d0 /
+%
+%           vectorized mises plasticity model with constant hardening
+%           modulus. the model supports temperature dependence of
+%           the elastic modulus, nu, hprime, and thermal
+%           expansion alpha can vary. temperature dependent
+%           properties enter through segmental curves.
+%
+span              = local_work.span;
+now_blk           = local_work.blk;
+%
+%            now standard update process. use nonlinear update and [D]
+%            computation for iter = 0 and extrapolation or iter > 1
+%            for iter = 0 and no extrapolation, use linear-elastic [D]
+%            with props at n+1.
+%      if( iter >= 1 .or. extrapolated_du ) then !nonlinear update
+%
+%     ****************************************************************
+%     *                                                              *
+%     *                 Ran modify this line                         *
+%     *                 no need to call drive_01_update_a            *
+%     *                                                              *
+%     ****************************************************************
+%     if( iter >= 1 ) then !nonlinear update
+for ii = 1:span
+    ym_n1 = local_work.e_vec(ii);
+    nu_n1 = local_work.nu_vec(ii);
+    beta = local_work.beta_vec(ii);
+    hprime_n1 = local_work.h_vec(ii);
+    yld_n1 = local_work.sigyld_vec(ii);
+    cgn = local_work.urcs_blk_n(ii,1:6);
+    uddt_local = uddt(ii,1:6);
+    currhist = local_work.elem_hist(ii,1:11);
+    ym_n = ym_n1;
+    nu_n = nu_n1;
+    [cgn1,currhist1,rtse,yield] = ...
+        mm01(ym_n1,nu_n1,beta,hprime_n1,yld_n1,cgn,uddt_local,currhist,ym_n,nu_n);
+    cep = cnst1(rtse,nu_n1,ym_n1,currhist1(2),currhist1(5),beta,currhist1(1),1,1,yield);
+    local_work.urcs_blk_n1(ii,1:6) = cgn1;
+    local_work.elem_hist1(ii,1:11) = currhist1;
+    temp = (ii-1) * 21;
+    cep_blk_n1(now_blk).ptr(temp+1) = cep(1,1);
+    cep_blk_n1(now_blk).ptr(temp+2:temp+3) = cep(2,1:2);
+    cep_blk_n1(now_blk).ptr(temp+4:temp+6) = cep(3,1:3);
+    cep_blk_n1(now_blk).ptr(temp+7:temp+10) = cep(4,1:4);
+    cep_blk_n1(now_blk).ptr(temp+11:temp+15) = cep(5,1:5);
+    cep_blk_n1(now_blk).ptr(temp+16:temp+21) = cep(6,1:6);
 end
-
-% end % loop over grid point
-
+%
+%
 end
